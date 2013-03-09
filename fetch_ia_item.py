@@ -181,10 +181,7 @@ def add_to_pathagar(pathagar_books, mdata, cover_image):
         else:
             tags = re.split(';\s*', metadata['subject'])
 
-        tags = [x.replace(' ', '_') for x in tags]
-        tags = [x.replace(',', '_') for x in tags]
-
-        book['tags'] = ','.join(tags)
+        book['tags'] = tags
 
     pathagar_books.append(book)
 
