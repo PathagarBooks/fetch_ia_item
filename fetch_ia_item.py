@@ -222,7 +222,7 @@ class Command(BaseCommand):
 
         if pathagar_books:
             if options['out_json_path']:
-                with open(options['out_json_path'], 'w'):
-                    json.dump(pathagar_books, fh, indent=4)
+                fh = open(options['out_json_path'], 'w')
+                json.dump(pathagar_books, fh, indent=4)
             else:
-                print json.dump(pathagar_books, indent = 4)
+                print json.dumps(pathagar_books, indent = 4)
