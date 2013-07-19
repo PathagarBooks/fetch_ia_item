@@ -4,6 +4,10 @@
 This script will download all of an user's bookmarked items from archive.org.
 """
 
+from django.core.management.base import BaseCommand, CommandError
+from optparse import make_option
+import settings
+
 import re
 import os
 import sys
@@ -16,9 +20,6 @@ import subprocess
 # Customize this script by editing global variables below
 #_________________________________________________________________________________________
 
-#archive.org username
-username = 'sverma'
-
 #uncomment formats below to download more data
 #formats are listed in order of preference, i.e. prefer 'Text' over 'DjVuTXT'
 requested_formats = {'pdf':  ['Text PDF', 'Additional Text PDF', 'Image Container PDF'],
@@ -29,7 +30,7 @@ requested_formats = {'pdf':  ['Text PDF', 'Additional Text PDF', 'Image Containe
                      #'djvu': ['DjVu'],
                     }
 
-download_directory = 'items'
+download_directory = os.path.join(settings.MEDIA_ROOT, "books")
 
 should_download_cover = True
 
@@ -41,6 +42,7 @@ def load_user_bookmarks(user):
     An example of user bookmarks: http://archive.org/bookmarks/sverma
     """
 
+    print user
     url = 'http://archive.org/bookmarks/%s?output=json' % user
     f = urllib.urlopen(url)
     return json.load(f)
@@ -160,7 +162,7 @@ def add_to_pathagar(pathagar_books, mdata, cover_image):
     if not book_paths:
         return
 
-    item_dir = os.path.join(download_directory, item_id)
+    item_dir = os.path.join(download_directory, metadata['identifier'])
     book_path = os.path.abspath(os.path.join(item_dir, book_paths[0]))
 
     book = {
@@ -186,32 +188,41 @@ def add_to_pathagar(pathagar_books, mdata, cover_image):
     pathagar_books.append(book)
 
 
-# main()
-#_________________________________________________________________________________________
-if '__main__' == __name__:
-    if not os.path.exists(download_directory):
-        os.mkdir(download_directory)
+class Command(BaseCommand):
+    help = "A script to download all of an user's bookmarked items from archive.org"
+    args = "<--username ... --out ...>"
+    
+    option_list = BaseCommand.option_list + (
+        make_option('--username',
+            dest='username',
+            default=False,
+            help='The username at archive.org'),
+        make_option('--out',
+            dest='out_json_path',
+            default=False,
+            help='The json file to write the output to'),        
+        )
+    def handle(self, *args, **options):
+        if not options['username']:
+           raise CommandError("Option '--username ...' must be specified.")
+        bookmarks = load_user_bookmarks(options['username'])
+        pathagar_books = []
+        for item in bookmarks:
+            item_id = item['identifier']
+            metadata = get_item_meatadata(item_id)
 
-    bookmarks = load_user_bookmarks(username)
+            download_item(item_id, item['mediatype'], metadata, download_directory, requested_formats)
 
-    # Keep track of books that can be imported into Pathagar (currently only PDFs and EPUBs)
-    pathagar_books = []
+            if should_download_cover:
+                cover_image = download_cover(item_id, metadata, download_directory)
+            else:
+                cover_image = None
 
-    for item in bookmarks:
-        item_id = item['identifier']
-        metadata = get_item_meatadata(item_id)
+            add_to_pathagar(pathagar_books, metadata, cover_image)
 
-        download_item(item_id, item['mediatype'], metadata, download_directory, requested_formats)
-
-        if should_download_cover:
-            cover_image = download_cover(item_id, metadata, download_directory)
-        else:
-            cover_image = None
-
-        add_to_pathagar(pathagar_books, metadata, cover_image)
-
-    if pathagar_books:
-        json_path = os.path.join(download_directory, 'pathagar.json')
-        fh = open(json_path, 'w')
-        json.dump(pathagar_books, fh, indent=4)
-        fh.close()
+        if pathagar_books:
+            if options['out_json_path']:
+                fh = open(options['out_json_path'], 'w')
+                json.dump(pathagar_books, fh, indent=4)
+            else:
+                print json.dumps(pathagar_books, indent = 4)
