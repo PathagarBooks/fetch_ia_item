@@ -160,7 +160,7 @@ def add_to_pathagar(pathagar_books, mdata, cover_image):
     if not book_paths:
         return
 
-    item_dir = os.path.join(download_directory, item_id)
+    item_dir = os.path.join(download_directory, metadata['identifier'])
     book_path = os.path.abspath(os.path.join(item_dir, book_paths[0]))
 
     book = {
