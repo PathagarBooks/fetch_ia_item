@@ -1,3 +1,5 @@
+**This project is deprecated. This script has been pulled into [pathagar](https://github.com/PathagarBooks/pathagar) as a Django management command.**
+
 fetch_ia_item.py
 ================
 
